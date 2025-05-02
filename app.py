@@ -145,7 +145,7 @@ def save_image_and_markdown(url, prompt, result, model, image_size, num_inferenc
         return None, None
 
 def main():
-    st.title("🤖 Image Generation with fal.ai & Flux")
+    st.title("吳振二號畫室fal.ai & Flux")
 
     # Check for environment variables
     if not os.getenv("FAL_KEY"):
