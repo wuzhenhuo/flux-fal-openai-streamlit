@@ -40,6 +40,13 @@ def tune_prompt_with_minimax(prompt):
         raise ValueError(f"MiniMax API request failed with status {response.status_code}: {response.text}")
     
     result = response.json()
+ # Add robust error handling
+    if 'error' in result:
+        raise ValueError(f"MiniMax API error: {result['error'].get('message', str(result['error']))}")
+    
+    if 'choices' not in result or not result['choices']:
+        raise ValueError(f"MiniMax API returned unexpected response structure: {result}")
+    
     return result['choices'][0]['message']['content'].strip()
 
 async def generate_image_with_fal(prompt, model, image_size, num_inference_steps, guidance_scale, num_images, safety_tolerance):
