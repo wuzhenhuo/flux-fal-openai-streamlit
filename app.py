@@ -11,12 +11,10 @@ from datetime import datetime
 
 def tune_prompt_with_minimax(prompt):
     minimax_api_key = os.getenv("MINIMAX_API_KEY")
-    if not minimax_api_key:
-        raise ValueError("MINIMAX_API_KEY environment variable is not set")
-    
-    # MiniMax API endpoint
+print(f"API Key loaded: {minimax_api_key[:10]}..." if minimax_api_key else "API Key NOT found")
+
+if minimax_api_key:
     url = "https://api.minimax.chat/v1/text/chatcompletion"
-    
     headers = {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {minimax_api_key}"
@@ -26,12 +24,8 @@ def tune_prompt_with_minimax(prompt):
         "model": "MiniMax-M2.5",
         "messages": [
             {
-                "role": "system",
-                "content": "You are an advanced AI assistant specialized in refining and enhancing image generation prompts. Your goal is to help users create more effective, detailed, and creative prompts."
-            },
-            {
                 "role": "user",
-                "content": f"Improve this image generation prompt: {prompt}"
+                "content": "Say hello"
             }
         ]
     }
@@ -39,6 +33,8 @@ def tune_prompt_with_minimax(prompt):
     response = requests.post(url, json=payload, headers=headers)
     result = response.json()
     
+    print(f"Status Code: {response.status_code}")
+    print(f"Response: {result}")
     # Check for MiniMax API errors in the base_resp structure
     if 'base_resp' in result:
         base_resp = result['base_resp']
