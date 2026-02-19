@@ -5,10 +5,15 @@ import asyncio
 import os
 import itertools
 import base64
+import logging
 from PIL import Image
 from io import BytesIO
 from datetime import datetime
 from zipfile import ZipFile
+
+# Setup logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Try to import nest_asyncio for better async handling
 try:
@@ -29,7 +34,7 @@ st.set_page_config(
 st.markdown("""
 <style>
     .main-title {
-        font-size: 4.5rem;
+        font-size: 5.5rem;
         font-weight: 900;
         text-align: center;
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -69,7 +74,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 st.markdown('<p class="main-title">🎨 吳振二號畫室</p>', unsafe_allow_html=True)
-st.markdown('<p class="sub-title">Flux2 + Nano Banana Pro + MiniMax</p>', unsafe_allow_html=True)
+st.markdown('<p class="sub-title">Flux + Nano Banana Pro + MiniMax</p>', unsafe_allow_html=True)
 
 # =========================
 # Session State Initialization
@@ -198,11 +203,11 @@ async def generate_image_with_fal(
     # Add reference images for editing models
     if reference_images and len(reference_images) > 0:
         if "nano-banana-pro/edit" in model:
-            # Nano Banana Pro Edit - accepts image_url parameter
-            arguments["image_url"] = image_to_fal_url(reference_images[0])
-            if len(reference_images) > 1:
-                # For multiple images, some models support image_urls array
-                arguments["image_urls"] = [image_to_fal_url(img) for img in reference_images]
+            # Nano Banana Pro Edit - requires image_urls (plural) as array
+            # This model uses image_urls, not image_url
+            image_urls_list = [image_to_fal_url(img) for img in reference_images]
+            arguments["image_urls"] = image_urls_list
+            logger.info(f"Nano Banana Pro Edit: Added {len(image_urls_list)} reference images")
         elif "flux" in model.lower():
             # Flux models may support image-to-image
             arguments["image_url"] = image_to_fal_url(reference_images[0])
@@ -461,9 +466,50 @@ def main():
     if generate_btn:
         if not prompt:
             st.warning("請輸入提示詞")
-        elif "nano-banana-pro/edit" in selected_model and not ref_images:
-            st.warning("Nano Banana Pro Edit 需要上傳參考圖片")
+        elif "nano-banana-pro/edit" in selected_model:
+            if not ref_images or len(ref_images) == 0:
+                st.warning("🍌 Nano Banana Pro Edit 需要上傳至少一張參考圖片！")
+            else:
+                try:
+                    spinner = st.empty()
+                    cycle = cycle_spinner_messages()
+                    
+                    with st.spinner(f"正在生成圖像，使用 {len(ref_images)} 張參考圖..."):
+                        result = generate_sync(
+                            prompt,
+                            selected_model,
+                            image_size,
+                            steps,
+                            guidance,
+                            num_images,
+                            safety,
+                            ref_images,
+                            spinner,
+                            cycle
+                        )
+                    spinner.empty()
+                    
+                    if "images" not in result or not result["images"]:
+                        raise ValueError(f"Invalid fal response: {result}")
+                    
+                    # Save to session state
+                    for img_data in result["images"]:
+                        st.session_state.generated_images.append(img_data["url"])
+                        st.session_state.generated_prompts.append(prompt)
+                    
+                    st.success(f"✅ 成功生成 {len(result['images'])} 張圖片")
+                    
+                    # Display seed and info
+                    col_info1, col_info2 = st.columns(2)
+                    with col_info1:
+                        st.caption(f"種子: {result.get('seed', 'N/A')}")
+                    with col_info2:
+                        st.caption(f"NSFW: {result.get('has_nsfw_concepts', 'N/A')}")
+                    
+                except Exception as e:
+                    st.error(f"生成錯誤: {e}")
         else:
+            # Other models (Flux, Imagen4, etc.)
             try:
                 spinner = st.empty()
                 cycle = cycle_spinner_messages()
