@@ -14,6 +14,7 @@ def tune_prompt_with_minimax(prompt):
     if not minimax_api_key:
         raise ValueError("MINIMAX_API_KEY environment variable is not set")
     
+    # MiniMax API endpoint
     url = "https://api.minimax.chat/v1/text/chatcompletion"
     
     headers = {
@@ -26,7 +27,7 @@ def tune_prompt_with_minimax(prompt):
         "messages": [
             {
                 "role": "system",
-                "content": "You are an advanced AI assistant specialized in refining and enhancing image generation prompts. Your goal is to help users create more effective, detailed, and creative prompts for high-quality images. Respond with: 1) An improved prompt (prefix with 'PROMPT:'), 2) Explanation of changes (prefix with 'EXPLANATION:'), and 3) Additional suggestions (prefix with 'SUGGESTIONS:'). Each section should be on a new line."
+                "content": "You are an advanced AI assistant specialized in refining and enhancing image generation prompts. Your goal is to help users create more effective, detailed, and creative prompts."
             },
             {
                 "role": "user",
@@ -36,14 +37,23 @@ def tune_prompt_with_minimax(prompt):
     }
     
     response = requests.post(url, json=payload, headers=headers)
+    result = response.json()
+    
+    # Check for MiniMax API errors in the base_resp structure
+    if 'base_resp' in result:
+        base_resp = result['base_resp']
+        if base_resp.get('status_code') != 0:
+            status_msg = base_resp.get('status_msg', 'Unknown error')
+            if base_resp.get('status_code') == 2049:
+                raise ValueError(f"MiniMax API Key Error: Invalid or expired API key. Status: {status_msg}")
+            else:
+                raise ValueError(f"MiniMax API error (Code {base_resp.get('status_code')}): {status_msg}")
+    
+    # Check for standard error response
     if response.status_code != 200:
         raise ValueError(f"MiniMax API request failed with status {response.status_code}: {response.text}")
     
-    result = response.json()
- # Add robust error handling
-    if 'error' in result:
-        raise ValueError(f"MiniMax API error: {result['error'].get('message', str(result['error']))}")
-    
+    # Check if we have the expected response structure
     if 'choices' not in result or not result['choices']:
         raise ValueError(f"MiniMax API returned unexpected response structure: {result}")
     
