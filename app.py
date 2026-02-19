@@ -536,8 +536,6 @@ def main():
         6. **下載圖片** - 單張或批量下載
         
         ### ⚠️ 注意事項
-        - 需要設置 `FAL_KEY` 環境變量
-        - MiniMax 優化需要 `MINIMAX_API_KEY`
         - Nano Banana Pro Edit 需要上傳參考圖片
         """)
 
