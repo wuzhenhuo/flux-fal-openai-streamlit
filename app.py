@@ -179,10 +179,10 @@ def main():
 
     model_options = {
         "Flux 2": "fal-ai/flux-2",
-        "Flux Pro": "fal-ai/flux-pro",
-        "Flux Dev": "fal-ai/flux/dev",
-        "Flux Schnell": "fal-ai/flux/schnell",
-        "Flux Realism": "fal-ai/flux-realism"
+        "Flux Pro v1.1": "fal-ai/flux-pro/v1.1-ultra",
+        "Flux 2 pro": "fal-ai/flux-2-pro",
+        "Imagen4": "fal-ai/imagen4/preview",
+        "hidream-i1": "fal-ai/hidream-i1-full"
     }
 
     selected_model = st.selectbox("Select Model", list(model_options.keys()))
