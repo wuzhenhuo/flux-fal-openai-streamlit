@@ -10,49 +10,57 @@ from io import BytesIO
 from datetime import datetime
 def tune_prompt_with_minimax(prompt):
     minimax_api_key = os.getenv("MINIMAX_API_KEY")
-    print(f"API Key loaded: {minimax_api_key[:10]}..." if minimax_api_key else "API Key NOT found")
 
-    if minimax_api_key:
-        url = "https://api.minimax.chat/v1/text/chatcompletion"
-        headers = {
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {minimax_api_key}"
-        }
-        
-        payload = {
-            "model": "MiniMax-M2.5",
-            "messages": [
-                {
-                    "role": "user",
-                    "content": "Say hello"
-                }
-            ]
-        }
-        
-        response = requests.post(url, json=payload, headers=headers)
-        result = response.json()
-        
-        print(f"Status Code: {response.status_code}")
-        print(f"Response: {result}")
-        # Check for MiniMax API errors in the base_resp structure
-        if 'base_resp' in result:
-            base_resp = result['base_resp']
-            if base_resp.get('status_code') != 0:
-                status_msg = base_resp.get('status_msg', 'Unknown error')
-                if base_resp.get('status_code') == 2049:
-                    raise ValueError(f"MiniMax API Key Error: Invalid or expired API key. Status: {status_msg}")
-                else:
-                    raise ValueError(f"MiniMax API error (Code {base_resp.get('status_code')}): {status_msg}")
-        
-        # Check for standard error response
-        if response.status_code != 200:
-            raise ValueError(f"MiniMax API request failed with status {response.status_code}: {response.text}")
-        
-        # Check if we have the expected response structure
-        if 'choices' not in result or not result['choices']:
-            raise ValueError(f"MiniMax API returned unexpected response structure: {result}")
-        
-        return result['choices'][0]['message']['content'].strip()
+    if not minimax_api_key:
+        raise ValueError("MINIMAX_API_KEY environment variable is not set")
+
+    url = "https://api.minimax.chat/v1/text/chatcompletion_v2"
+
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {minimax_api_key}"
+    }
+
+    payload = {
+        "model": "abab6.5-chat",  # 官方稳定模型
+        "messages": [
+            {
+                "role": "system",
+                "content": "You are a professional prompt engineer. Improve the user's image prompt."
+            },
+            {
+                "role": "user",
+                "content": f"""
+Improve this image generation prompt.
+
+Return in this format exactly:
+
+PROMPT: <optimized prompt>
+EXPLANATION: <what you improved>
+SUGGESTIONS: <optional suggestions>
+
+Original prompt:
+{prompt}
+"""
+            }
+        ],
+        "temperature": 0.7,
+        "top_p": 0.95
+    }
+
+    response = requests.post(url, json=payload, headers=headers)
+
+    # 🔥 先检查 HTTP 状态
+    if response.status_code != 200:
+        raise ValueError(f"MiniMax HTTP Error {response.status_code}: {response.text}")
+
+    result = response.json()
+
+    # 🔥 新版 MiniMax 返回格式
+    if "choices" not in result or not result["choices"]:
+        raise ValueError(f"Unexpected MiniMax response: {result}")
+
+    return result["choices"][0]["message"]["content"].strip()
 async def generate_image_with_fal(prompt, model, image_size, num_inference_steps, guidance_scale, num_images, safety_tolerance):
     fal_api_key = os.getenv("FAL_KEY")
     if not fal_api_key:
