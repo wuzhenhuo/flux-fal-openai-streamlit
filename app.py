@@ -1,24 +1,29 @@
 import streamlit as st
-import openai
+import requests
 import fal_client
 import asyncio
 import os
 import time
 import itertools
-import requests
 from PIL import Image
 from io import BytesIO
 from datetime import datetime
 
-def tune_prompt_with_openai(prompt, model):
-    openai_api_key = os.getenv("OPENAI_API_KEY")
-    if not openai_api_key:
-        raise ValueError("OPENAI_API_KEY environment variable is not set")
+def tune_prompt_with_minimax(prompt):
+    minimax_api_key = os.getenv("MINIMAX_API_KEY")
+    if not minimax_api_key:
+        raise ValueError("MINIMAX_API_KEY environment variable is not set")
     
-    client = openai.OpenAI(api_key=openai_api_key)
-    response = client.chat.completions.create(
-        model=model,
-        messages=[
+    url = "https://api.minimax.chat/v1/text/chatcompletion"
+    
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {minimax_api_key}"
+    }
+    
+    payload = {
+        "model": "MiniMax-M2.5",
+        "messages": [
             {
                 "role": "system",
                 "content": "You are an advanced AI assistant specialized in refining and enhancing image generation prompts. Your goal is to help users create more effective, detailed, and creative prompts for high-quality images. Respond with: 1) An improved prompt (prefix with 'PROMPT:'), 2) Explanation of changes (prefix with 'EXPLANATION:'), and 3) Additional suggestions (prefix with 'SUGGESTIONS:'). Each section should be on a new line."
@@ -28,8 +33,14 @@ def tune_prompt_with_openai(prompt, model):
                 "content": f"Improve this image generation prompt: {prompt}"
             }
         ]
-    )
-    return response.choices[0].message.content.strip()
+    }
+    
+    response = requests.post(url, json=payload, headers=headers)
+    if response.status_code != 200:
+        raise ValueError(f"MiniMax API request failed with status {response.status_code}: {response.text}")
+    
+    result = response.json()
+    return result['choices'][0]['message']['content'].strip()
 
 async def generate_image_with_fal(prompt, model, image_size, num_inference_steps, guidance_scale, num_images, safety_tolerance):
     fal_api_key = os.getenv("FAL_KEY")
@@ -145,7 +156,7 @@ def save_image_and_markdown(url, prompt, result, model, image_size, num_inferenc
         return None, None
 
 def main():
-    st.title("吳振二號畫室fal.ai & Flux")
+    st.title("吳振二號畫室Flux & MiniMax")
 
     # Check for environment variables
     if not os.getenv("FAL_KEY"):
@@ -154,6 +165,7 @@ def main():
 
     # Model selection dropdown
     model_options = {
+        "Flux 2": "fal-ai/flux-2",
         "Flux Pro": "fal-ai/flux-pro",
         "Flux Dev": "fal-ai/flux/dev",
         "Flux Schnell": "fal-ai/flux/schnell",
@@ -186,20 +198,17 @@ def main():
         st.session_state.user_prompt = user_prompt
         st.session_state.prompt_accepted = False
 
-    # OpenAI prompt tuning options
-    use_openai_tuning = st.checkbox("Use OpenAI for prompt tuning", value=False)
-    
-    openai_model_options = ["gpt-4o", "gpt-4o-mini"]
-    selected_openai_model = st.selectbox("Select OpenAI Model:", openai_model_options, index=0, disabled=not use_openai_tuning)
+    # MiniMax prompt tuning options
+    use_minimax_tuning = st.checkbox("Use MiniMax for prompt tuning", value=False)
 
-    if use_openai_tuning and user_prompt:
-        if not os.getenv("OPENAI_API_KEY"):
-            st.error("OPENAI_API_KEY environment variable is not set. Please set it before using OpenAI tuning.")
+    if use_minimax_tuning and user_prompt:
+        if not os.getenv("MINIMAX_API_KEY"):
+            st.error("MINIMAX_API_KEY environment variable is not set. Please set it before using MiniMax tuning.")
         else:
             if st.button("✏️ Tune Prompt"):
-                with st.spinner("Tuning prompt with OpenAI..."):
+                with st.spinner("Tuning prompt with MiniMax..."):
                     try:
-                        tuned_result = tune_prompt_with_openai(user_prompt, selected_openai_model)
+                        tuned_result = tune_prompt_with_minimax(user_prompt)
                         
                         # Split the result into prompt, explanation, and suggestions
                         sections = tuned_result.split('\n')
