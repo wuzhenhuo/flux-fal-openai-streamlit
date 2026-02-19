@@ -69,7 +69,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 st.markdown('<p class="main-title">🎨 吳振二號畫室</p>', unsafe_allow_html=True)
-st.markdown('<p class="sub-title">Flux + Nano Banana Pro + MiniMax</p>', unsafe_allow_html=True)
+st.markdown('<p class="sub-title">Flux2 + Nano Banana Pro + MiniMax</p>', unsafe_allow_html=True)
 
 # =========================
 # Session State Initialization
