@@ -10,6 +10,13 @@ from io import BytesIO
 from datetime import datetime
 from zipfile import ZipFile
 
+# Try to import nest_asyncio for better async handling
+try:
+    import nest_asyncio
+    nest_asyncio.apply()
+except ImportError:
+    pass  # Will handle without nest_asyncio
+
 # =========================
 # Page Config & Custom CSS
 # =========================
@@ -22,13 +29,15 @@ st.set_page_config(
 st.markdown("""
 <style>
     .main-title {
-        font-size: 3rem;
-        font-weight: bold;
+        font-size: 4.5rem;
+        font-weight: 900;
         text-align: center;
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         margin-bottom: 2rem;
+        letter-spacing: 0.15em;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
     }
     .sub-title {
         text-align: center;
@@ -71,6 +80,26 @@ if 'generated_prompts' not in st.session_state:
     st.session_state.generated_prompts = []
 if 'prompt' not in st.session_state:
     st.session_state.prompt = ""
+
+# =========================
+# Async Helper for Streamlit
+# =========================
+def run_async(coro):
+    """Run async function in Streamlit context"""
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = None
+    
+    if loop and loop.is_running():
+        # If there's already a running loop, create a new thread
+        import concurrent.futures
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            future = executor.submit(asyncio.run, coro)
+            return future.result()
+    else:
+        return asyncio.run(coro)
+
 
 # =========================
 # MiniMax Prompt Tuning
@@ -209,6 +238,36 @@ async def run_with_spinner(coroutine, placeholder, cycle):
         placeholder.text(next(cycle))
         await asyncio.sleep(2)
     return await task
+
+
+def generate_sync(prompt, model, image_size, steps, guidance, num_images, safety, ref_images, spinner, cycle):
+    """Synchronous wrapper for async generation - handles Streamlit event loop issues"""
+    import concurrent.futures
+    import threading
+    
+    async def do_generate():
+        return await generate_image_with_fal(
+            prompt, model, image_size, steps, guidance, num_images, safety, ref_images
+        )
+    
+    def run_in_thread():
+        """Run async function in a new thread with its own event loop"""
+        return asyncio.run(do_generate())
+    
+    # Use ThreadPoolExecutor to avoid event loop conflicts
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+        future = executor.submit(run_in_thread)
+        
+        # Show spinner while waiting
+        while not future.done():
+            try:
+                spinner.text(next(cycle))
+            except:
+                pass
+            import time
+            time.sleep(1)
+        
+        return future.result()
 
 
 # =========================
@@ -409,19 +468,18 @@ def main():
                 spinner = st.empty()
                 cycle = cycle_spinner_messages()
                 
-                async def task():
-                    return await generate_image_with_fal(
-                        prompt,
-                        selected_model,
-                        image_size,
-                        steps,
-                        guidance,
-                        num_images,
-                        safety,
-                        ref_images
-                    )
-                
-                result = asyncio.run(run_with_spinner(task(), spinner, cycle))
+                result = generate_sync(
+                    prompt,
+                    selected_model,
+                    image_size,
+                    steps,
+                    guidance,
+                    num_images,
+                    safety,
+                    ref_images,
+                    spinner,
+                    cycle
+                )
                 spinner.empty()
                 
                 if "images" not in result or not result["images"]:
@@ -536,6 +594,8 @@ def main():
         6. **下載圖片** - 單張或批量下載
         
         ### ⚠️ 注意事項
+        - 需要設置 `FAL_KEY` 環境變量
+        - MiniMax 優化需要 `MINIMAX_API_KEY`
         - Nano Banana Pro Edit 需要上傳參考圖片
         """)
 
