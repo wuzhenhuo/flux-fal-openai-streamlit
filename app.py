@@ -527,7 +527,7 @@ def render_gallery():
 
 def main():
     # Title
-    st.markdown('<p class="main-title">🎨 吳振二號畫 室振視科技 tot@alexzhenwu.com</p>', unsafe_allow_html=True)
+    st.markdown('<p class="main-title">🎨 吳振畫室（二號） 振視科技 tot@alexzhenwu.com</p>', unsafe_allow_html=True)
     st.markdown(
         '<p class="sub-title">Flux · Nano Banana Pro · Imagen4 · HiDream — powered by fal.ai</p>',
         unsafe_allow_html=True,
