@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 # Page Config & Theme  (must be the first Streamlit command)
 # ---------------------------------------------------------------------------
 st.set_page_config(
-    page_title="吳振畫室",
+    page_title="吳振畫室 振視科技 tot@alexzhenwu.com",
     page_icon="🎨",
     layout="wide",
     initial_sidebar_state="expanded",
