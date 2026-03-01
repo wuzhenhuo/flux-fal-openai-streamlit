@@ -67,7 +67,7 @@ section[data-testid="stSidebar"] * {
 /* ---- Title ---- */
 .main-title {
     font-family: 'Noto Sans TC', sans-serif;
-    font-size: clamp(1.8rem, 4vw, 3.2rem);
+    font-size: clamp(2.3rem, 5vw, 3.7rem);
     font-weight: 900;
     text-align: center;
     background: linear-gradient(135deg, #f093fb 0%, #667eea 50%, #4facfe 100%);
@@ -811,7 +811,7 @@ def render_gallery():
 def main():
     # Title
     st.markdown(
-        '<p class="main-title">🎨 吳振畫室（二號）</p>',
+        '<p class="main-title" style="font-size:2.3rem">🎨 吳振畫室（二號）</p>',
         unsafe_allow_html=True,
     )
     st.markdown(
